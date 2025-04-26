@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Проверка гипотезы с помощью критерия Стьюдента</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+            margin: 20px;
+            color: #333;
+        }
+        h1, h2, h3 {
+            text-align: center;
+        }
+        form {
+            background-color: white;
+            padding: 25px;
+            border-radius: 10px;
+            max-width: 900px;
+            margin: auto;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        input, select, button {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        input, select {
+            width: 100%;
+        }
+        button[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: 600;
+            width: 100%;
+            border: none;
+            cursor: pointer;
+        }
+        button[type="submit"]:hover {
+            background-color: #45a049;
+        }
+        .fields {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .block {
+            background-color: #eef1f4;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+        .result {
+            background-color: #dff0d8;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .error {
+            background-color: #f8d7da;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            color: #721c24;
+            font-weight: bold;
+        }
+        .delete-btn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background-color: #d32f2f;
+        }
+        .clear-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            width: auto;
+            margin-top: 10px;
+        }
+        .clear-btn:hover {
+            background-color: #5a6268;
+        }
+        .add-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            width: auto;
+            margin-top: 10px;
+        }
+        .add-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Проверка гипотезы о равенстве средних с помощью критерия Стьюдента</h1>
+
+<div class="block">
+    <h2>Инструкция и теория</h2>
+    <p>
+        Данный сервис предназначен для проверки гипотезы о равенстве средних двух нормальных генеральных совокупностей 
+        с помощью критерия Стьюдента.  
+    </p>
+    <p>
+        Существуют две независимые выборки. Гипотеза H₀ формулируется как равенство математических ожиданий двух совокупностей. 
+        Проверка выполняется по следующему принципу: 
+        если рассчитанное значение критерия Стьюдента по модулю превышает критическое значение, гипотеза H₀ отвергается.
+    </p>
+    <p>
+        В зависимости от известности дисперсии существуют два случая:
+        <ul>
+            <li><b>Известная дисперсия:</b> используется нормальное распределение, критическое значение берется из таблицы стандартного нормального распределения.</li>
+            <li><b>Неизвестная дисперсия:</b> используется объединённая выборочная дисперсия и t-распределение Стьюдента с соответствующим числом степеней свободы.</li>
+        </ul>
+    </p>
+    <p>
+        При заполнении данных укажите значения каждой выборки. Если каждое значение имеет повторяющееся количество измерений, введите количество отдельно (по умолчанию — 1).
+        Для дробных чисел используйте точку (например, 2.5, -1.7).
+    </p>
+</div>
+
+<form method="POST">
+    <h2>Выбор параметров расчета</h2>
+
+    <label>Уровень значимости (например, 0.05):</label>
+    <input type="text" name="alpha" required value="{{ user_input.alpha if user_input else '' }}">
+
+    <label>Тип задачи:</label>
+    <select name="mode" onchange="toggleSigmaInput(this.value)">
+        <option value="unknown" {% if user_input.mode == 'unknown' %}selected{% endif %}>Дисперсия неизвестна</option>
+        <option value="known" {% if user_input.mode == 'known' %}selected{% endif %}>Дисперсия известна (σ известно)</option>
+    </select>
+
+    <div id="sigmaField" style="{% if user_input.mode != 'known' %}display:none;{% endif %}">
+        <label>Введите известное значение σ:</label>
+        <input type="text" name="sigma" value="{{ user_input.sigma if user_input and user_input.sigma else '' }}">
+    </div>
+
+    <div class="block">
+        <h3>Данные для первой выборки (A):</h3>
+        <div id="inputsA">
+            {% if user_input %}
+                {% for val, cnt in zip(user_input.values_A, user_input.counts_A) %}
+                <div class="fields">
+                    <input type="text" name="a_value_{{ loop.index0 }}" placeholder="Значение" value="{{ val }}">
+                    <input type="number" name="a_count_{{ loop.index0 }}" placeholder="Количество" value="{{ cnt }}">
+                    <button type="button" class="delete-btn" onclick="removeField(this)">Удалить</button>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="fields">
+                    <input type="text" name="a_value_0" placeholder="Значение">
+                    <input type="number" name="a_count_0" placeholder="Количество" value="1">
+                    <button type="button" class="delete-btn" onclick="removeField(this)">Удалить</button>
+                </div>
+            {% endif %}
+        </div>
+        <button type="button" class="clear-btn" onclick="clearInputs('inputsA', 'a')">Очистить все</button>
+        <button type="button" class="add-btn" onclick="addInput('inputsA', 'a')">Добавить значение</button>
+    </div>
+
+    <div class="block">
+        <h3>Данные для второй выборки (B):</h3>
+        <div id="inputsB">
+            {% if user_input %}
+                {% for val, cnt in zip(user_input.values_B, user_input.counts_B) %}
+                <div class="fields">
+                    <input type="text" name="b_value_{{ loop.index0 }}" placeholder="Значение" value="{{ val }}">
+                    <input type="number" name="b_count_{{ loop.index0 }}" placeholder="Количество" value="{{ cnt }}">
+                    <button type="button" class="delete-btn" onclick="removeField(this)">Удалить</button>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="fields">
+                    <input type="text" name="b_value_0" placeholder="Значение">
+                    <input type="number" name="b_count_0" placeholder="Количество" value="1">
+                    <button type="button" class="delete-btn" onclick="removeField(this)">Удалить</button>
+                </div>
+            {% endif %}
+        </div>
+        <button type="button" class="clear-btn" onclick="clearInputs('inputsB', 'b')">Очистить все</button>
+        <button type="button" class="add-btn" onclick="addInput('inputsB', 'b')">Добавить значение</button>
+    </div>
+
+    <button type="submit">Рассчитать</button>
+</form>
+
+{% if result %}
+    {% if result.error %}
+        <div class="error">{{ result.error }}</div>
+    {% else %}
+        <div class="result">
+            <p><b>Среднее выборки A:</b> {{ result.mean1 }}</p>
+            <p><b>Среднее выборки B:</b> {{ result.mean2 }}</p>
+            {% if result.mode == 'unknown' %}
+                <p><b>Выборочная дисперсия A:</b> {{ result.s1_sq }}</p>
+                <p><b>Выборочная дисперсия B:</b> {{ result.s2_sq }}</p>
+                <p><b>Объединённая дисперсия:</b> {{ result.s_pooled }}</p>
+                <p><b>Степени свободы:</b> {{ result.df }}</p>
+            {% else %}
+                <p><b>Известная σ:</b> {{ result.sigma }}</p>
+            {% endif %}
+            <p><b>Рассчитанное t:</b> {{ result.t_calc }}</p>
+            <p><b>Критическое t:</b> {{ result.t_crit }}</p>
+            <p><b>Гипотеза H₀:</b> {{ result.hypothesis }}</p>
+        </div>
+    {% endif %}
+{% endif %}
+
+<script>
+function toggleSigmaInput(value) {
+    const sigmaField = document.getElementById('sigmaField');
+    sigmaField.style.display = (value === 'known') ? 'block' : 'none';
+}
+
+function addInput(containerId, prefix) {
+    const container = document.getElementById(containerId);
+    const index = container.children.length;
+    const fields = document.createElement('div');
+    fields.className = 'fields';
+    fields.innerHTML = `
+        <input type="text" name="${prefix}_value_${index}" placeholder="Значение">
+        <input type="number" name="${prefix}_count_${index}" placeholder="Количество" value="1">
+        <button type="button" class="delete-btn" onclick="removeField(this)">Удалить</button>
+    `;
+    container.appendChild(fields);
+}
+
+function removeField(button) {
+    button.parentElement.remove();
+}
+
+function clearInputs(containerId, prefix) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    const fields = document.createElement('div');
+    fields.className = 'fields';
+    fields.innerHTML = `
+        <input type="text" name="${prefix}_value_0" placeholder="Значение">
+        <input type="number" name="${prefix}_count_0" placeholder="Количество" value="1">
+        <button type="button" class="delete-btn" onclick="removeField(this)">Удалить</button>
+    `;
+    container.appendChild(fields);
+}
+</script>
+
+</body>
+</html>
