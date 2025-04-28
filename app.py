@@ -47,7 +47,7 @@ def index():
             mean2 = sum(data_B) / n2
 
             if mode == 'unknown':
-                # Случай 1б: дисперсия неизвестна, вычисляем объединённую
+                # дисперсия неизвестна
                 s1_sq = sum((x - mean1) ** 2 for x in data_A) / (n1 - 1)
                 s2_sq = sum((x - mean2) ** 2 for x in data_B) / (n2 - 1)
                 s_pooled = ((n1 - 1) * s1_sq + (n2 - 1) * s2_sq) / (n1 + n2 - 2)
@@ -67,7 +67,7 @@ def index():
                     'hypothesis': "отклоняется" if abs(t_calc) > t_crit else "не отклоняется"
                 }
             else:
-                # Случай 1а: дисперсия известна, σ задана пользователем
+                # дисперсия известна, σ задана пользователем
                 if sigma <= 0:
                     raise ValueError("σ должно быть положительным числом.")
                 t_calc = (mean1 - mean2) / (sigma * math.sqrt(1/n1 + 1/n2))
@@ -97,5 +97,8 @@ def index():
 
     return render_template('index.html', result=result, user_input=user_input, zip=zip)
 
+import os
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
